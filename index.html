@@ -1,0 +1,1238 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ciberseguridad & Automatización - Presentación ODS 16</title>
+    <meta name="description"
+        content="Presentación interactiva del Proyecto de Monitoreo Automatizado de Amenazas alineado al ODS 16.">
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;700;900&family=Rajdhani:wght@400;500;600;700&family=Fira+Code:wght@400;500&display=swap"
+        rel="stylesheet">
+
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <style>
+        /* Variables y Sistema de Diseño */
+        :root {
+            --bg-color: #060813;
+            --card-bg: rgba(12, 17, 43, 0.7);
+            --card-border: rgba(0, 240, 255, 0.15);
+            --cyan: #00f0ff;
+            --cyan-glow: rgba(0, 240, 255, 0.3);
+            --green: #00ff87;
+            --orange: #ff7b00;
+            --orange-glow: rgba(255, 123, 0, 0.3);
+            --red: #ff3b30;
+            --text-main: #f1f5f9;
+            --text-muted: #94a3b8;
+            --font-main: 'Rajdhani', sans-serif;
+            --font-title: 'Orbitron', sans-serif;
+            --font-code: 'Fira Code', monospace;
+            --transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        /* Reset y Generalidades */
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            font-family: var(--font-main);
+            overflow: hidden;
+            /* NO SCROLL */
+            line-height: 1.6;
+            height: 100vh;
+            width: 100vw;
+        }
+
+        h1,
+        h2,
+        h3,
+        h4 {
+            font-family: var(--font-title);
+            font-weight: 700;
+        }
+
+        /* Canvas de Partículas */
+        #canvas-bg {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 0;
+            pointer-events: none;
+        }
+
+        /* Layout de Presentación */
+        .presentation-container {
+            position: relative;
+            width: 100%;
+            height: 100vh;
+            z-index: 10;
+        }
+
+        .slide {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.6s ease, transform 0.6s ease;
+            transform: scale(0.95) translateY(20px);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 2rem 5%;
+            overflow-y: auto;
+            /* Allow internal scroll if screen is too small */
+        }
+
+        .slide.active {
+            opacity: 1;
+            visibility: visible;
+            transform: scale(1) translateY(0);
+            z-index: 20;
+        }
+
+        .slide-content-wrapper {
+            max-width: 1200px;
+            width: 100%;
+            margin: 0 auto;
+        }
+
+        /* Controles de Navegación */
+        .nav-controls {
+            position: fixed;
+            bottom: 1rem;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 100;
+            display: flex;
+            align-items: center;
+            gap: 1.5rem;
+            background: rgba(6, 8, 19, 0.8);
+            padding: 0.75rem 1.5rem;
+            border-radius: 50px;
+            border: 1px solid rgba(0, 240, 255, 0.2);
+            backdrop-filter: blur(10px);
+        }
+
+        .nav-btn {
+            background: transparent;
+            border: 1px solid var(--cyan);
+            color: var(--cyan);
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            transition: var(--transition);
+            font-size: 1.2rem;
+        }
+
+        .nav-btn:hover:not(:disabled) {
+            background: var(--cyan);
+            color: var(--bg-color);
+            box-shadow: 0 0 15px var(--cyan-glow);
+        }
+
+        .nav-btn:disabled {
+            border-color: rgba(255, 255, 255, 0.1);
+            color: rgba(255, 255, 255, 0.2);
+            cursor: not-allowed;
+        }
+
+        .slide-indicators {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.2);
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .dot.active {
+            background: var(--cyan);
+            box-shadow: 0 0 10px var(--cyan-glow);
+            transform: scale(1.3);
+        }
+
+        /* Top Header (Branding only) */
+        header {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            z-index: 100;
+            padding: 1.5rem 3rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            pointer-events: none;
+            /* Let clicks pass through */
+        }
+
+        .logo {
+            font-size: 1.2rem;
+            font-weight: 800;
+            font-family: var(--font-title);
+            color: #fff;
+            pointer-events: auto;
+        }
+
+        .logo span {
+            color: var(--cyan);
+        }
+
+        .slide-counter {
+            font-family: var(--font-code);
+            color: var(--cyan);
+            font-weight: bold;
+            background: rgba(0, 240, 255, 0.1);
+            padding: 0.25rem 0.75rem;
+            border-radius: 4px;
+            border: 1px solid rgba(0, 240, 255, 0.2);
+        }
+
+        /* Comunes para Secciones */
+        .section-tag {
+            font-size: 0.8rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.15em;
+            color: var(--cyan);
+            margin-bottom: 0.5rem;
+            display: inline-block;
+        }
+
+        .section-title {
+            font-size: 2.2rem;
+            margin-bottom: 1rem;
+        }
+
+        .section-desc {
+            color: var(--text-muted);
+            font-size: 1rem;
+            margin-bottom: 2rem;
+            max-width: 800px;
+        }
+
+        /* DIAPOSITIVA 1: HERO */
+        .hero-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 3rem;
+            align-items: center;
+        }
+
+        .hero-title {
+            font-size: 3rem;
+            font-weight: 900;
+            line-height: 1.15;
+            margin-bottom: 1.5rem;
+            background: linear-gradient(135deg, #fff 40%, var(--cyan) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .hero-subtitle {
+            font-size: 1.2rem;
+            color: var(--text-muted);
+            border-left: 3px solid var(--cyan);
+            padding-left: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        /* Diapositiva 2: DESAFIO */
+        .desafio-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+        }
+
+        .ods-badge {
+            background: linear-gradient(135deg, #e5243b 0%, #a21a26 100%);
+            padding: 0.5rem 1rem;
+            border-radius: 4px;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-weight: 700;
+            margin-bottom: 1.5rem;
+        }
+
+        .threat-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+        }
+
+        .threat-card {
+            background: var(--card-bg);
+            border: 1px solid rgba(255, 123, 0, 0.2);
+            padding: 1.25rem;
+            border-radius: 6px;
+        }
+
+        .threat-card h4 {
+            color: var(--orange);
+            margin-bottom: 0.5rem;
+            display: flex;
+            gap: 0.5rem;
+            align-items: center;
+        }
+
+        .threat-card p {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+        }
+
+        /* Diapositiva 3: SOLUCION */
+        .solucion-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 1.5rem;
+        }
+
+        .micro-card {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            padding: 1.5rem;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .micro-card i {
+            font-size: 2rem;
+            color: var(--cyan);
+            margin-bottom: 1rem;
+        }
+
+        .micro-card h3 {
+            font-size: 1.1rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .micro-card p {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+        }
+
+        /* Diapositiva 4: ECOSISTEMA (Compactado para slider) */
+        .dashboard-container {
+            display: grid;
+            grid-template-columns: 250px 1fr;
+            gap: 1.5rem;
+            background: rgba(10, 15, 36, 0.6);
+            border: 1px solid rgba(0, 240, 255, 0.15);
+            border-radius: 8px;
+            padding: 1.5rem;
+            height: 60vh;
+            /* Fixed height for presentation */
+        }
+
+        .courses-list {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            overflow-y: auto;
+            padding-right: 1rem;
+            border-right: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .course-tab {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid transparent;
+            padding: 0.75rem;
+            border-radius: 4px;
+            color: var(--text-muted);
+            cursor: pointer;
+            text-align: left;
+            font-size: 0.9rem;
+            transition: var(--transition);
+        }
+
+        .course-tab.active {
+            background: rgba(0, 240, 255, 0.1);
+            border-color: var(--cyan);
+            color: #fff;
+        }
+
+        .course-details-panel {
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+        }
+
+        .terminal-mock {
+            background: #04060d;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            padding: 1rem;
+            border-radius: 4px;
+            font-family: var(--font-code);
+            font-size: 0.8rem;
+            margin-top: auto;
+            white-space: pre-wrap;
+        }
+
+        /* Syntax Highlight Classes */
+        .terminal-mock span.keyword {
+            color: #f472b6;
+        }
+
+        .terminal-mock span.string {
+            color: var(--green);
+        }
+
+        .terminal-mock span.comment {
+            color: var(--text-muted);
+        }
+
+        .terminal-mock span.output {
+            color: var(--cyan);
+        }
+
+        /* Diapositiva 5: CONCLUSIONES ODS 16 (Professional Fast Read) */
+        .fast-conclusion {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 3.5rem;
+            width: 100%;
+            height: 100%;
+            margin-top: 4rem;
+        }
+
+        .impact-words {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 2.5rem;
+            width: 100%;
+        }
+
+        .impact-word {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 1.5rem;
+            padding: 2.5rem 3.5rem;
+            background: rgba(10, 14, 34, 0.6);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-top: 4px solid var(--cyan);
+            border-radius: 8px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            min-width: 280px;
+        }
+
+        .impact-word i {
+            font-size: 3.5rem;
+            color: var(--cyan);
+        }
+
+        .impact-word span {
+            font-family: var(--font-title);
+            font-size: 1.8rem;
+            font-weight: 500;
+            color: #fff;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+        }
+
+        .impact-word.highlight {
+            border-top: 4px solid var(--green);
+            background: rgba(0, 255, 135, 0.03);
+        }
+
+        .impact-word.highlight i {
+            color: var(--green);
+        }
+
+        .impact-arrow {
+            font-size: 2rem;
+            color: rgba(255, 255, 255, 0.15);
+        }
+
+        .impact-statement {
+            font-size: 1.8rem;
+            font-family: var(--font-main);
+            font-weight: 400;
+            color: #cbd5e1;
+            text-align: center;
+            max-width: 900px;
+            line-height: 1.5;
+            padding-top: 2rem;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .impact-statement strong {
+            color: var(--green);
+            font-weight: 700;
+            letter-spacing: 0.05em;
+        }
+
+        /* ===== DIAPOSITIVA 4: ARQUITECTURA ACADÉMICA ===== */
+        .arch-layout {
+            display: flex;
+            gap: 1rem;
+            width: 100%;
+            height: auto;
+            align-items: center;
+            margin-top: 0.5rem;
+        }
+
+        .arch-diagram {
+            flex: 1.6;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            background: rgba(10, 14, 34, 0.4);
+            padding: 0.8rem 1rem;
+            border-radius: 16px;
+            border: 1px solid rgba(0, 240, 255, 0.15);
+        }
+
+        .diag-col {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            flex: 1;
+        }
+
+        .diag-node {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            background: rgba(12, 17, 43, 0.8);
+            border: 1px solid rgba(0, 240, 255, 0.2);
+            padding: 0.6rem 0.5rem;
+            border-radius: 8px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+            transition: transform 0.2s, border-color 0.2s;
+        }
+
+        .diag-node:hover {
+            transform: scale(1.05);
+            border-color: var(--cyan);
+            box-shadow: 0 0 15px rgba(0, 240, 255, 0.2);
+        }
+
+        .core-node {
+            background: rgba(0, 240, 255, 0.08);
+            border: 2px solid var(--cyan);
+            padding: 1rem 0.5rem;
+        }
+
+        .diag-icon {
+            font-size: 1.2rem;
+            color: var(--cyan);
+            flex-shrink: 0;
+            width: 30px;
+            text-align: center;
+        }
+
+        .diag-text {
+            display: flex;
+            flex-direction: column;
+            gap: 0.2rem;
+        }
+
+        .diag-text strong {
+            color: #fff;
+            font-size: 0.95rem;
+            font-family: var(--font-title);
+            letter-spacing: 0.05em;
+        }
+
+        .diag-text span {
+            color: var(--text-muted);
+            font-size: 0.85rem;
+            line-height: 1.2;
+        }
+
+        .diag-conn {
+            color: rgba(0, 240, 255, 0.5);
+            font-size: 1.2rem;
+            animation: pulse-arrow 2s infinite;
+            display: flex;
+            align-items: center;
+        }
+
+        .main-conn {
+            font-size: 2rem;
+            color: var(--cyan);
+            filter: drop-shadow(0 0 8px var(--cyan-glow));
+        }
+
+        @keyframes pulse-arrow {
+
+            0%,
+            100% {
+                opacity: 0.5;
+                transform: translateX(0);
+            }
+
+            50% {
+                opacity: 1;
+                transform: translateX(5px);
+            }
+        }
+
+        /* --- PANEL DERECHO: SISTEMA --- */
+        .arch-system {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background: rgba(10, 14, 34, 0.85);
+            border: 2px solid rgba(0, 240, 255, 0.3);
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: 0 0 40px rgba(0, 240, 255, 0.1), inset 0 0 30px rgba(0, 240, 255, 0.05);
+            height: auto;
+        }
+
+        .sys-header {
+            padding: 0.8rem;
+            background: rgba(0, 240, 255, 0.1);
+            border-bottom: 2px solid rgba(0, 240, 255, 0.2);
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            justify-content: center;
+        }
+
+        .sys-header-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: var(--cyan);
+            box-shadow: 0 0 15px var(--cyan);
+            animation: blink 2s ease-in-out infinite;
+        }
+
+        .sys-header-title {
+            font-family: var(--font-title);
+            font-size: 1.3rem;
+            color: #fff;
+            font-weight: 700;
+            letter-spacing: 0.1em;
+        }
+
+        .sys-body {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-evenly;
+            padding: 0.5rem 1.5rem;
+            gap: 0.5rem;
+        }
+
+        .sys-stage {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+            padding: 0.8rem;
+            background: rgba(255, 255, 255, 0.02);
+            border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            transition: all 0.3s ease;
+        }
+
+        .sys-stage:hover {
+            background: rgba(255, 255, 255, 0.05);
+            border-color: rgba(255, 255, 255, 0.1);
+            transform: scale(1.02);
+        }
+
+        .sys-stage-label {
+            font-family: var(--font-code);
+            font-size: 1.1rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.15em;
+            margin-bottom: 0.8rem;
+        }
+
+        .sys-stage-label.input-label {
+            color: var(--orange);
+        }
+
+        .sys-stage-label.proc-label {
+            color: var(--cyan);
+        }
+
+        .sys-stage-label.out-label {
+            color: var(--green);
+        }
+
+        .sys-item {
+            font-size: 1.15rem;
+            color: #ccc;
+            line-height: 1.5;
+        }
+
+        .sys-item strong {
+            color: #fff;
+        }
+
+        .sys-flow-arrow {
+            text-align: center;
+            color: var(--cyan);
+            font-size: 1.8rem;
+            animation: bounce 2s infinite;
+        }
+
+        @keyframes bounce {
+
+            0%,
+            100% {
+                transform: translateY(0);
+            }
+
+            50% {
+                transform: translateY(6px);
+            }
+        }
+
+        @keyframes blink {
+
+            0%,
+            100% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.3;
+            }
+        }
+
+        .sys-footer {
+            padding: 0.8rem;
+            background: rgba(0, 240, 255, 0.05);
+            border-top: 1px solid rgba(0, 240, 255, 0.15);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 1rem;
+        }
+
+        .live-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: var(--green);
+            box-shadow: 0 0 15px var(--green);
+            animation: blink 1.5s ease-in-out infinite;
+        }
+
+        .sys-footer span {
+            font-size: 1.2rem;
+            font-weight: 700;
+            color: var(--green);
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+        }
+
+        /* Subtitle for slide 4 */
+        .arch-subtitle {
+            font-size: 0.9rem;
+            color: var(--text-muted);
+            margin-bottom: 0.5rem;
+            font-style: italic;
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- Fondo -->
+    <canvas id="canvas-bg"></canvas>
+
+    <!-- Header Branding -->
+    <header>
+        <div class="logo"><i class="fa-solid fa-shield-halved"></i> SECURE<span>ODS16</span></div>
+    </header>
+
+    <!-- Contenedor Principal de Presentación -->
+    <div class="presentation-container">
+
+        <!-- DIAPOSITIVA 1: Inicio -->
+        <section class="slide active" id="slide-0">
+            <img src="UPC_logo_transparente.png" alt="Logo UPC"
+                style="position: absolute; top: 1.5rem; right: 3rem; height: 130px; opacity: 0.9; filter: drop-shadow(0 0 8px var(--cyan-glow));">
+            <div class="slide-content-wrapper hero-grid">
+                <div>
+                    <h1 class="hero-title">Ciberseguridad & Automatización Institucional</h1>
+                    <p class="hero-subtitle">Plataforma de monitoreo automatizado de amenazas orientada al cumplimiento
+                        del ODS 16 (Paz, Justicia e Instituciones Sólidas).</p>
+                </div>
+                <div style="text-align: center;">
+                    <i class="fa-solid fa-fingerprint"
+                        style="font-size: 12rem; color: var(--cyan); text-shadow: 0 0 40px var(--cyan-glow);"></i>
+                </div>
+            </div>
+        </section>
+
+        <!-- DIAPOSITIVA 2: El Problema -->
+        <section class="slide" id="slide-1">
+            <img src="UPC_logo_transparente.png" alt="Logo UPC"
+                style="position: absolute; top: 1.5rem; right: 3rem; height: 130px; opacity: 0.9; filter: drop-shadow(0 0 8px var(--cyan-glow));">
+            <div class="slide-content-wrapper">
+                <div class="section-tag" style="font-size: 1.1rem; letter-spacing: 0.2em;">El Problema</div>
+                <h2 class="section-title" style="font-size: 2.8rem;">Amenaza a las Instituciones (ODS 16)</h2>
+
+                <div class="desafio-grid">
+                    <div>
+                        <div class="ods-badge"><i class="fa-solid fa-scale-balanced"></i> ODS 16 — Instituciones Sólidas
+                        </div>
+                        <p class="section-desc">Los ciberataques socavan la confianza en el ecosistema digital. Si los
+                            datos de los ciudadanos e instituciones no están seguros, se debilita la estabilidad social
+                            y la gobernanza.</p>
+                    </div>
+                    <div class="threat-grid">
+                        <div class="threat-card">
+                            <h4><i class="fa-solid fa-hospital"></i> Infraestructura Crítica</h4>
+                            <p>Ataques a hospitales paralizan servicios vitales.</p>
+                        </div>
+                        <div class="threat-card">
+                            <h4><i class="fa-solid fa-envelope"></i> Phishing y Fraude</h4>
+                            <p>Robo masivo de identidades que destruye la confianza ciudadana.</p>
+                        </div>
+                        <div class="threat-card">
+                            <h4><i class="fa-solid fa-building-shield"></i> Brechas Estatales</h4>
+                            <p>Filtraciones que exponen vulnerabilidades gubernamentales.</p>
+                        </div>
+                        <div class="threat-card">
+                            <h4><i class="fa-solid fa-key"></i> Ransomware</h4>
+                            <p>Secuestro de datos operativos críticos y extorsión institucional.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- DIAPOSITIVA 3: La Solución -->
+        <section class="slide" id="slide-2">
+            <img src="UPC_logo_transparente.png" alt="Logo UPC"
+                style="position: absolute; top: 1.5rem; right: 3rem; height: 130px; opacity: 0.9; filter: drop-shadow(0 0 8px var(--cyan-glow));">
+            <div class="slide-content-wrapper">
+                <div class="section-tag" style="font-size: 1.1rem; letter-spacing: 0.2em;">La Solución Propuesta</div>
+                <h2 class="section-title">Monitoreo Automatizado de Amenazas</h2>
+                <p class="section-desc">Desarrollo de un sistema autónomo en Python para detectar anomalías y emitir
+                    alertas tempranas antes de que ocurra una brecha de seguridad.</p>
+
+                <div class="solucion-grid">
+                    <div class="micro-card">
+                        <i class="fa-solid fa-terminal"></i>
+                        <h3>Análisis de Logs</h3>
+                        <p>Auditoría en tiempo real de registros del servidor.</p>
+                    </div>
+                    <div class="micro-card">
+                        <i class="fa-solid fa-user-lock"></i>
+                        <h3>Bloqueo de Accesos</h3>
+                        <p>Detección y mitigación de fuerza bruta al instante.</p>
+                    </div>
+                    <div class="micro-card">
+                        <i class="fa-solid fa-network-wired"></i>
+                        <h3>Patrones Anómalos</h3>
+                        <p>Análisis de tráfico para detectar comportamientos atípicos.</p>
+                    </div>
+                    <div class="micro-card">
+                        <i class="fa-solid fa-bell"></i>
+                        <h3>Alertas Inmediatas</h3>
+                        <p>Notificaciones automatizadas al equipo de respuesta SOC.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- DIAPOSITIVA 4: Arquitectura Académica de la Solución -->
+        <section class="slide" id="slide-3">
+            <img src="UPC_logo_transparente.png" alt="Logo UPC"
+                style="position: absolute; top: 1.5rem; right: 3rem; height: 130px; opacity: 0.9; filter: drop-shadow(0 0 8px var(--cyan-glow));">
+            <div class="slide-content-wrapper" style="width: 100%; max-width: 1300px;">
+                <div class="section-tag">Arquitectura Académica de la Solución</div>
+                <h2 class="section-title" style="margin-bottom: 0.2rem;">Cómo cada conocimiento construye el sistema
+                </h2>
+                <p class="arch-subtitle">Cada módulo cumple una función técnica concreta en el sistema de monitoreo.</p>
+
+                <div class="arch-layout">
+                    <!-- LEFT: THE DIAGRAM -->
+                    <div class="arch-diagram">
+                        <!-- Col 1: Prevención -->
+                        <div class="diag-col">
+                            <div class="diag-node">
+                                <i class="fa-solid fa-shield-halved diag-icon"></i>
+                                <div class="diag-text">
+                                    <strong>Fundamentos</strong>
+                                    <span>Activos y Datos</span>
+                                </div>
+                            </div>
+                            <div class="diag-node">
+                                <i class="fa-solid fa-chart-bar diag-icon"></i>
+                                <div class="diag-text">
+                                    <strong>Riesgos</strong>
+                                    <span>Priorizar amenazas</span>
+                                </div>
+                            </div>
+                            <div class="diag-node">
+                                <i class="fa-solid fa-bug diag-icon"></i>
+                                <div class="diag-text">
+                                    <strong>Vulnerabilidades</strong>
+                                    <span>Sup. de ataque</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="diag-conn"><i class="fa-solid fa-arrow-right-long"></i></div>
+
+                        <!-- Col 2: Operativa -->
+                        <div class="diag-col">
+                            <div class="diag-node">
+                                <i class="fa-solid fa-network-wired diag-icon"></i>
+                                <div class="diag-text">
+                                    <strong>Redes Seguras</strong>
+                                    <span>Telemetría</span>
+                                </div>
+                            </div>
+                            <div class="diag-node">
+                                <i class="fa-brands fa-linux diag-icon"></i>
+                                <div class="diag-text">
+                                    <strong>Linux + SQL</strong>
+                                    <span>Evidencia en logs</span>
+                                </div>
+                            </div>
+                            <div class="diag-node">
+                                <i class="fa-solid fa-fire-extinguisher diag-icon"></i>
+                                <div class="diag-text">
+                                    <strong>Incidentes</strong>
+                                    <span>Contención</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="diag-conn"><i class="fa-solid fa-arrow-right-long"></i></div>
+
+                        <!-- Col 3: Motor -->
+                        <div class="diag-col">
+                            <div class="diag-node core-node">
+                                <i class="fa-brands fa-python diag-icon"></i>
+                                <div class="diag-text">
+                                    <strong>Python</strong>
+                                    <span>Motor automático</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="diag-conn main-conn"><i class="fa-solid fa-angles-right"></i></div>
+
+                    <!-- PANEL DERECHO: SISTEMA -->
+                    <div class="arch-system">
+                        <div class="sys-header">
+                            <div class="sys-header-dot"></div>
+                            <div class="sys-header-title">Sistema de Monitoreo</div>
+                        </div>
+                        <div class="sys-body">
+                            <div class="sys-stage">
+                                <div class="sys-stage-label input-label"><i
+                                        class="fa-solid fa-arrow-right-to-bracket"></i> INPUT</div>
+                                <div class="sys-item">Telemetría de Red, Logs, Eventos y Accesos</div>
+                            </div>
+                            <div class="sys-flow-arrow"><i class="fa-solid fa-angles-down"></i></div>
+                            <div class="sys-stage">
+                                <div class="sys-stage-label proc-label"><i class="fa-solid fa-microchip"></i>
+                                    PROCESAMIENTO</div>
+                                <div class="sys-item">Análisis automatizado en <strong>Python</strong>: Parseo,
+                                    Correlación y Scoring</div>
+                            </div>
+                            <div class="sys-flow-arrow"><i class="fa-solid fa-angles-down"></i></div>
+                            <div class="sys-stage">
+                                <div class="sys-stage-label out-label"><i class="fa-solid fa-arrow-up-from-bracket"></i>
+                                    OUTPUT</div>
+                                <div class="sys-item">Detección Temprana, Alertas Automáticas y Bloqueo</div>
+                            </div>
+                        </div>
+                        <div class="sys-footer">
+                            <div class="live-dot"></div>
+                            <span>ODS 16 · Instituciones protegidas · Activo</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- DIAPOSITIVA 5: Conclusiones -->
+        <section class="slide" id="slide-4">
+            <img src="UPC_logo_transparente.png" alt="Logo UPC"
+                style="position: absolute; top: 1.5rem; right: 3rem; height: 130px; opacity: 0.9; filter: drop-shadow(0 0 8px var(--cyan-glow));">
+            <div class="slide-content-wrapper" style="width: 100%; max-width: 1200px;">
+                <div class="section-tag" style="text-align: center; font-size: 1.8rem; letter-spacing: 0.2em;">IMPACTO
+                    DEL
+                    PROYECTO</div>
+
+                <div class="fast-conclusion">
+                    <div class="impact-words">
+                        <div class="impact-word">
+                            <i class="fa-solid fa-shield-halved"></i>
+                            <span>Prevenir</span>
+                        </div>
+
+                        <i class="fa-solid fa-arrow-right impact-arrow"></i>
+
+                        <div class="impact-word">
+                            <i class="fa-solid fa-microchip"></i>
+                            <span>Automatizar</span>
+                        </div>
+
+                        <i class="fa-solid fa-arrow-right impact-arrow"></i>
+
+                        <div class="impact-word highlight">
+                            <i class="fa-solid fa-building-shield"></i>
+                            <span>Proteger</span>
+                        </div>
+                    </div>
+
+                    <div class="impact-statement">
+                        Garantizando la estabilidad, disponibilidad y confiabilidad en las <strong>Instituciones
+                            Digitales
+                            (ODS 16)</strong>.
+                    </div>
+                </div>
+            </div>
+        </section>
+
+    </div>
+
+    <!-- Controles de Navegación -->
+    <div class="nav-controls">
+        <button class="nav-btn" id="btn-prev" onclick="prevSlide()" disabled title="Anterior"><i
+                class="fa-solid fa-chevron-left"></i></button>
+        <div class="slide-indicators" id="indicators">
+            <div class="dot active" onclick="goToSlide(0)"></div>
+            <div class="dot" onclick="goToSlide(1)"></div>
+            <div class="dot" onclick="goToSlide(2)"></div>
+            <div class="dot" onclick="goToSlide(3)"></div>
+            <div class="dot" onclick="goToSlide(4)"></div>
+        </div>
+        <button class="nav-btn" id="btn-next" onclick="nextSlide()" title="Siguiente"><i
+                class="fa-solid fa-chevron-right"></i></button>
+    </div>
+
+    <script>
+        // --- 1. Lógica de Presentación (Slides) ---
+        let currentSlide = 0;
+        const totalSlides = document.querySelectorAll('.slide').length;
+
+        function updatePresentation() {
+            // Actualizar slides
+            document.querySelectorAll('.slide').forEach((slide, index) => {
+                if (index === currentSlide) {
+                    slide.classList.add('active');
+                } else {
+                    slide.classList.remove('active');
+                }
+            });
+
+            // Actualizar indicadores y botones
+            document.querySelectorAll('.dot').forEach((dot, index) => {
+                dot.classList.toggle('active', index === currentSlide);
+            });
+
+            document.getElementById('btn-prev').disabled = currentSlide === 0;
+            document.getElementById('btn-next').disabled = currentSlide === totalSlides - 1;
+        }
+
+        function nextSlide() {
+            if (currentSlide < totalSlides - 1) {
+                currentSlide++;
+                updatePresentation();
+            }
+        }
+
+        function prevSlide() {
+            if (currentSlide > 0) {
+                currentSlide--;
+                updatePresentation();
+            }
+        }
+
+        function goToSlide(index) {
+            currentSlide = index;
+            updatePresentation();
+        }
+
+        // Navegación con teclado (Flechas)
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowRight' || e.key === 'Space') nextSlide();
+            if (e.key === 'ArrowLeft') prevSlide();
+        });
+
+
+        // --- 2. Lógica del Dashboard de Cursos (Diapositiva 4) ---
+        const coursesData = {
+            1: {
+                title: "Fundamentos de Ciberseguridad",
+                desc: "Desarrollo de bases éticas y comprensión del panorama digital y modelado del adversario.",
+                code: `# Triada CIA
+[Confidencialidad] -> Datos protegidos.
+[Integridad]       -> Prevención de modificaciones.
+[Disponibilidad]   -> Sistemas siempre listos.`
+            },
+            2: {
+                title: "Gestión de Riesgos",
+                desc: "Establecimiento de políticas y matrices de mitigación bajo estándares como NIST.",
+                code: `{
+  "threat": "Ransomware",
+  "impact": "Crítico",
+  "remediation": "Backups offline automáticos",
+  "status": "Mitigado"
+}`
+            },
+            3: {
+                title: "Redes Seguras",
+                desc: "Aseguramiento de comunicaciones e implementación de aislamiento perimetral (Firewalls, IDS).",
+                code: `# Reglas de Firewall (Anti-DDoS y Restricción)
+iptables -A INPUT -p tcp --dport 5432 -j DROP
+iptables -A INPUT -p tcp --syn -m limit --limit 5/s -j ACCEPT`
+            },
+            4: {
+                title: "Linux y SQL",
+                desc: "Hardening de servidores, control de accesos y consultas de auditoría en bases de datos.",
+                code: `-- Auditoría de Accesos Fallidos
+SELECT username, client_ip, COUNT(*) AS intentos
+FROM auth_logs WHERE status = 'FAILED'
+GROUP BY username HAVING intentos > 5;`
+            },
+            5: {
+                title: "Vulnerabilidades",
+                desc: "Simulación de escenarios de ataque (Pentesting) para identificar brechas de software.",
+                code: `[+] Escaneo Iniciado: Host 10.0.2.15
+[!] Alerta: Puerto 21 (FTP) abierto con vsftpd 2.3.4
+[!] Vulnerabilidad crítica detectada: CVE-2011-2523`
+            },
+            6: {
+                title: "Respuesta a Incidentes",
+                desc: "Monitoreo mediante SIEM para aislar amenazas y actuar rápidamente bajo protocolos.",
+                code: `{
+  "rule": "Inyección SQL detectada",
+  "severity": 8,
+  "src_ip": "203.0.113.5",
+  "action": "IP bloqueada temporalmente en Firewall"
+}`
+            },
+            7: {
+                title: "Automatización (Python)",
+                desc: "Scripts a medida para analizar logs continuamente y emitir reportes automatizados.",
+                code: `import re, requests
+
+def analizar_logs(archivo):
+    for linea in open(archivo):
+        if "Failed password" in linea:
+            ip = re.search(r"from ([\d\.]+)", linea).group(1)
+            requests.post("https://api/alert", json={"ip_atacante": ip})`
+            }
+        };
+
+        function highlightCode(text) {
+            let escaped = text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+            const regex = /(\/\/[^\n]*|#[^\n]*|--[^\n]*)|("[^"\\]*(?:\\.[^"\\]*)*"|'[^'\\]*(?:\\.[^'\\]*)*')|\b(SELECT|FROM|WHERE|GROUP BY|HAVING|UPDATE|DROP|import|requests|def|for|in|if|iptables|DROP|ACCEPT|limit|rule|severity|action|threat|impact|remediation|status)\b|(\b\d+\b)/g;
+            return escaped.replace(regex, (match, comment, string, keyword, number) => {
+                if (comment) return `<span class="comment">${comment}</span>`;
+                if (string) return `<span class="string">${string}</span>`;
+                if (keyword) return `<span class="keyword">${keyword}</span>`;
+                if (number) return `<span class="output">${number}</span>`;
+                return match;
+            });
+        }
+
+        function switchCourse(courseId) {
+            document.querySelectorAll('.course-tab').forEach(tab => tab.classList.remove('active'));
+            document.querySelectorAll('.course-tab')[courseId - 1].classList.add('active');
+
+            const data = coursesData[courseId];
+            document.getElementById('course-title').innerText = data.title;
+            document.getElementById('course-desc').innerText = data.desc;
+            document.getElementById('terminal-content').innerHTML = highlightCode(data.code);
+        }
+
+        // --- 3. Animación de Fondo (Canvas) ---
+        const canvas = document.getElementById('canvas-bg');
+        const ctx = canvas.getContext('2d');
+        let particles = [];
+
+        function initCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            particles = [];
+            for (let i = 0; i < 50; i++) {
+                particles.push({
+                    x: Math.random() * canvas.width,
+                    y: Math.random() * canvas.height,
+                    vx: (Math.random() - 0.5) * 0.5,
+                    vy: (Math.random() - 0.5) * 0.5
+                });
+            }
+        }
+
+        function animate() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = 'rgba(0, 240, 255, 0.15)';
+            ctx.strokeStyle = 'rgba(0, 240, 255, 0.05)';
+
+            particles.forEach((p, i) => {
+                p.x += p.vx; p.y += p.vy;
+                if (p.x < 0 || p.x > canvas.width) p.vx *= -1;
+                if (p.y < 0 || p.y > canvas.height) p.vy *= -1;
+
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, 1.5, 0, Math.PI * 2);
+                ctx.fill();
+
+                for (let j = i + 1; j < particles.length; j++) {
+                    let p2 = particles[j];
+                    let dx = p.x - p2.x, dy = p.y - p2.y;
+                    if (dx * dx + dy * dy < 15000) {
+                        ctx.beginPath();
+                        ctx.moveTo(p.x, p.y);
+                        ctx.lineTo(p2.x, p2.y);
+                        ctx.stroke();
+                    }
+                }
+            });
+            requestAnimationFrame(animate);
+        }
+
+        // Inicialización
+        window.addEventListener('resize', initCanvas);
+        initCanvas();
+        animate();
+        switchCourse(1); // Cargar primer curso por defecto
+    </script>
+</body>
+
+</html>
